@@ -1,2 +1,145 @@
-# synthgraph
-Synthetic graph generation for proteome networks using the duplication-divergence model.
+- written by: Nicolás López, Camilo Rocha and Jorge Finke
+
+- last updated: Jun 13/2023
+
+# Welcome to Synthetic Graph Generator's documentation!
+
+Synthetic graph generation for proteome networks using the 
+duplication-divergence model.
+
+## Table of Contents
+
+- [Module 1: synthgraph](#module-1-synthgraph)
+  - [Graph Generation](#graph-generation)
+  - [Calibration methods](#calibration-methods)
+  - [Using an existing network](#using-an-existing-network)
+- [Module 2: duplicationdivergence](#module-2-duplicationdivergence)
+  - [Algorithmic description](#algorithmic-description)
+- [Example](#example)
+- [API reference](#api-reference)
+
+## Module 1: synthgraph
+
+This module contains the code for generating synthetic graphs using the
+duplication-divergence model. This process resembles the evolution of
+interactions between proteins in an organism. This evolution is
+thought to occur in three steps:
+
+1. Duplication: A protein duplicates itself. This is done by
+duplicating a vertex in the graph and copying all its edges.
+
+2. Divergence: The two proteins diverge from each other. This is
+done by randomly removing edges from the duplicated vertex with a
+probability delta.
+
+3. Evolution: The duplicated protein develops new interactions. This
+is done by adding new edges to the duplicated vertex with a
+probability alpha.
+
+
+### Graph Generation
+
+Two methods are provided for generating synthetic graphs in such a manner:
+
+1. duplication_divergence_graph: This method generates a single graph
+using the duplication-divergence model (steps 1 and 2)
+
+2. extended_duplication_divergence_graph: This method generates a single
+graph using the duplication-divergence model (steps 1, 2, and 3)
+
+
+### Calibration methods
+
+Besides, this module implements methods for calibrating the alpha and
+delta parameters given a target number of edges. This method uses a
+modified binary search algorithm to find the correct value for the
+parameter. The algorithm works as follows:
+
+1. Given the expected number of edges, the method creates partitions
+of the search space [0, 1] for a parameter (alpha or delta).
+
+2. For each partition, the method generates several graphs using the
+duplication-divergence model with the given parameters.
+
+3. The method computes the average number of edges for each partition.
+
+4. If the behavior of the average number of edges is monotonic, the
+method narrows the search space to the partition including the target
+number of edges and repeats the procedure. Otherwise, the method stops
+and returns the average of the limits of the partition with the
+expected number of edges.
+
+Keep in mind that the calibration method finds an approximate value for
+the parameter, not the exact value. This is because the number of edges
+varies from one graph to another, even if the parameters are the same.
+For the extended duplication-divergence model, one of the parameters
+should be fixed, either alpha or delta.
+
+
+### Using an existing network
+
+Support has been added for generating a graph using the
+duplication-divergence model from an existing graph or the
+intersection of two graphs. Those methods are:
+
+1. synth_graph_from_network: This method generates a graph using the
+duplication-divergence model from an existing graph.
+2. synth_graph_from_intersection: This method generates a graph using
+the duplication-divergence model from the intersection of two graphs.
+
+
+## Module 2: duplicationdivergence
+
+This module contains the implementation of the duplication-divergence 
+model, both considering only duplication and divergence, and also 
+considering the possibility of connecting the duplicated node to other 
+nodes not connected to it.
+
+### Algorithmic description
+
+It is based on the following paper:
+
+- Pastor-Satorras R, Smith E, Solé RV. *Evolving protein interaction 
+networks through gene duplication*. J Theor Biol. 
+2003 May 21;222(2):199-210. doi:10.1016/s0022-5193(03)00028-6.
+
+The model starts from a complete graph with two nodes and then repeats 
+this process:
+
+1. A node is chosen at random and duplicated, creating a new node.
+2. With probability delta, each of the edges of the duplicated node 
+may be removed.
+3. With probability alpha, the duplicated node may become connected to 
+any of the nodes not connected to it before the duplication.
+
+
+## Example
+
+Each of the modules includes test functions if called directly using 
+one of the following options:
+
+```
+python3 synthgraph.py
+```
+
+or
+
+```
+python3 duplicationdivergence.py
+```
+
+For using them as part of another script, you can just load the 
+synthgraph module, it loads all functions from the other module as well:
+
+```
+import synthgraph
+```
+
+Note: Include the files with `.py` extension in the folder you need 
+to execute your code, for easy access.
+
+
+## API Reference
+
+The reference can be found online [here](docs/index.html) or as 
+a pdf [here](docs/syntheticgraphgenerator.pdf).
