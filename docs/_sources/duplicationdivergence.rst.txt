@@ -1,0 +1,7 @@
+duplicationdivergence module
+============================
+
+.. automodule:: duplicationdivergence
+   :members:
+   :undoc-members:
+   :show-inheritance:

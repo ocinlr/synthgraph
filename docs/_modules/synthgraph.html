@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>synthgraph &mdash; Synthetic Graph Generator 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Synthetic Graph Generator
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Synthetic Graph Generation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Synthetic Graph Generator</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">synthgraph</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for synthgraph</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This module contains the code for generating synthetic graphs using the</span>
+<span class="sd">    duplication-divergence model. This process resembles the evolution of</span>
+<span class="sd">    interactions between proteins in an organism. This evolution is</span>
+<span class="sd">    thought to occur in three steps:</span>
+
+<span class="sd">        1. Duplication: A protein duplicates itself. This is done by</span>
+<span class="sd">        duplicating a vertex in the graph and copying all its edges.</span>
+
+<span class="sd">        2. Divergence: The two proteins diverge from each other. This is</span>
+<span class="sd">        done by randomly removing edges from the duplicated vertex with a</span>
+<span class="sd">        probability delta.</span>
+
+<span class="sd">        3. Evolution: The duplicated protein develops new interactions. This</span>
+<span class="sd">        is done by adding new edges to the duplicated vertex with a</span>
+<span class="sd">        probability alpha</span>
+
+<span class="sd">Graph generation</span>
+<span class="sd">----------------</span>
+<span class="sd">    Two methods are provided for generating synthetic graphs in such a manner:</span>
+
+<span class="sd">        1. duplication_divergence_graph: This method generates a single graph</span>
+<span class="sd">        using the duplication-divergence model (steps 1 and 2)</span>
+
+<span class="sd">        2. extended_duplication_divergence_graph: This method generates a single</span>
+<span class="sd">        graph using the duplication-divergence model (steps 1, 2, and 3)</span>
+
+<span class="sd">    The duplication-divergence model is parameterized by the following</span>
+<span class="sd">    parameters:</span>
+
+<span class="sd">        - n: The number of vertices in the graph</span>
+
+<span class="sd">        - delta: The probability of an edge being removed during divergence</span>
+
+<span class="sd">        - alpha: The probability of an edge being added during evolution</span>
+
+<span class="sd">        - seed: The seed for the random number generator</span>
+
+<span class="sd">    Additional optional parameters are provided for controlling verbosity:</span>
+
+<span class="sd">        - track_evolution: If set to True, a list of topological parameters \</span>
+<span class="sd">        are stored and return at the end of the simulation. The returned \</span>
+<span class="sd">        metrics are: current appended node, number of edges, average square \</span>
+<span class="sd">        clustering, transitivity (triangle count) and degree histogram.</span>
+
+<span class="sd">        - verbose: If set to True, the method will display the progress of \</span>
+<span class="sd">        the node aggregation process using the tqdm library.</span>
+
+<span class="sd">Calibration methods</span>
+<span class="sd">-------------------</span>
+<span class="sd">    Besides, this module implements methods for calibrating the alpha and</span>
+<span class="sd">    delta parameters given a target number of edges. This method uses a</span>
+<span class="sd">    modified binary search algorithm to find the correct value for the</span>
+<span class="sd">    parameter. The algorithm works as follows:</span>
+
+<span class="sd">        1. Given the expected number of edges, the method creates partitions</span>
+<span class="sd">        of the search space [0, 1] for a parameter (alpha or delta).</span>
+
+<span class="sd">        2. For each partition, the method generates several graphs using the</span>
+<span class="sd">        duplication-divergence model with the given parameters.</span>
+
+<span class="sd">        3. The method computes the average number of edges for each partition.</span>
+
+<span class="sd">        4. If the behaviour of the average number of edges is monotonic, the</span>
+<span class="sd">        method narrows the search space to the partition including the target</span>
+<span class="sd">        number of edges and repeats the procedure. Otherwise, the method stops</span>
+<span class="sd">        and returns the average of the limits of the partition with the</span>
+<span class="sd">        expected number of edges.</span>
+
+<span class="sd">    Keep in mind that the calibration method finds an approximate value for</span>
+<span class="sd">    the parameter, not the exact value. This is because the number of edges</span>
+<span class="sd">    varies from one graph to another, even if the parameters are the same.</span>
+<span class="sd">    For the extended duplication-divergence model, one of the parameters</span>
+<span class="sd">    should be fixed, either alpha or delta.</span>
+
+<span class="sd">    The calibration methods are parameterized by the following parameters,</span>
+<span class="sd">    where applicable:</span>
+
+<span class="sd">        - n: The number of vertices in the graph.</span>
+<span class="sd">        - target_edges: The target number of edges.</span>
+<span class="sd">        - lo_alpha: The lower bound for the alpha parameter.</span>
+<span class="sd">        - hi_alpha: The upper bound for the alpha parameter.</span>
+<span class="sd">        - lo_delta: The lower bound for the delta parameter.</span>
+<span class="sd">        - hi_delta: The upper bound for the delta parameter.</span>
+<span class="sd">        - intervals: The number of partitions for the search space.</span>
+<span class="sd">        - repetitions: The number of graphs generated for each partition.</span>
+<span class="sd">        - seed: The seed for the random number generator.</span>
+<span class="sd">        - verbose: If set to True, the method will display the progress of \</span>
+<span class="sd">        the node aggregation process using the tqdm library.</span>
+
+<span class="sd">Using an existing network</span>
+<span class="sd">-------------------------</span>
+<span class="sd">    Support has been added for generating a graph using the</span>
+<span class="sd">    duplication-divergence model from an existing graph or the</span>
+<span class="sd">    intersection of two graphs. Those methods are:</span>
+
+<span class="sd">        1. synth_graph_from_network: This method generates a graph using the \</span>
+<span class="sd">        duplication-divergence model from an existing graph.</span>
+
+<span class="sd">        2. synth_graph_from_intersection: This method generates a graph using \</span>
+<span class="sd">        the duplication-divergence model from the intersection of two graphs.</span>
+
+<span class="sd">    The methods are parameterized by the following parameters:</span>
+
+<span class="sd">        - g1: The graph to be used as a template.</span>
+<span class="sd">        - g2: The second graph to be used as a template (for the intersection method only).</span>
+<span class="sd">        - alpha: The probability of an edge being added during evolution.</span>
+<span class="sd">        - lo_delta: The lower bound for the delta parameter.</span>
+<span class="sd">        - hi_delta: The upper bound for the delta parameter.</span>
+<span class="sd">        - all other optional parameters like the calibration functions: \</span>
+<span class="sd">        target_edges, lo_alpha, hi_alpha, intervals, repetitions, seed, verbose.</span>
+<span class="sd">        - seed: The seed for the random number generator.</span>
+<span class="sd">        - track_evolution: If set to True, a list of topological parameters \</span>
+<span class="sd">        are stored and return at the end of the simulation. The returned \</span>
+<span class="sd">        metrics are: current appended node, number of edges, average square \</span>
+<span class="sd">        clustering, transitivity (triangle count) and degree histogram.</span>
+
+<span class="sd">|</span>
+
+<span class="sd">**API Reference**</span>
+<span class="sd">-----------------</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span>
+<span class="kn">from</span> <span class="nn">duplicationdivergence</span> <span class="kn">import</span> <span class="o">*</span>
+
+
+<span class="k">class</span> <span class="nc">_DeltaGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is used to create a graph with the given number of edges as</span>
+<span class="sd">    static parameter and delta as dynamic parameter (using the __call__</span>
+<span class="sd">    method).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param n: The number of vertices in the graph.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method generates a graph with the given number of edges and</span>
+<span class="sd">        delta.</span>
+
+<span class="sd">        :param delta: The probability of an edge being removed during divergence.</span>
+<span class="sd">        :type delta: float</span>
+
+<span class="sd">        :return graph: A graph generated using the duplication-divergence model.</span>
+<span class="sd">        :rtype: networkx.Graph</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">duplication_divergence_graph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">_DeltaGivenAlphaGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is used to generate graphs using the duplication-divergence</span>
+<span class="sd">    model with a given value for the delta parameter and a given value for</span>
+<span class="sd">    the alpha parameter.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;n&#39;</span><span class="p">,</span> <span class="s1">&#39;alpha&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor for the _DeltaGivenAlphaGraph class.</span>
+
+<span class="sd">        :param n: The number of vertices in the graph.</span>
+<span class="sd">        :type n: int</span>
+<span class="sd">        :param alpha: The alpha parameter for the duplication-divergence model.</span>
+<span class="sd">        :type alpha: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delta</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method generates a graph using the extended duplication-divergence</span>
+<span class="sd">        model with the given values for the alpha and delta parameters.</span>
+
+<span class="sd">        :param delta: The delta parameter for the duplication-divergence model.</span>
+<span class="sd">        :type delta: float</span>
+
+<span class="sd">        :return edges: The number of edges in the generated graph.</span>
+<span class="sd">        :rtype edges: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Return the number of edges in the graph.</span>
+        <span class="k">return</span> <span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">_AlphaGivenDeltaGraph</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class represents a graph generated using the duplication-divergence</span>
+<span class="sd">    model with a fixed value for the delta parameter. The class implements</span>
+<span class="sd">    the __call__ method, which returns the number of edges in the graph.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;delta&quot;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method initializes the object.</span>
+
+<span class="sd">        :param n: The number of vertices in the graph.</span>
+<span class="sd">        :type n: int</span>
+<span class="sd">        :param delta: The delta parameter for the duplication-divergence model.</span>
+<span class="sd">        :type delta: float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delta</span> <span class="o">=</span> <span class="n">delta</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method generates a graph using the duplication-divergence model</span>
+<span class="sd">        with the given parameters and returns the number of edges in the</span>
+<span class="sd">        graph.</span>
+
+<span class="sd">        :param alpha: The alpha parameter for the duplication-divergence model.</span>
+<span class="sd">        :type alpha: float</span>
+
+<span class="sd">        :return edges: The number of edges in the generated graph.</span>
+<span class="sd">        :rtype edges: int</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Generate the graph using the duplication-divergence model.</span>
+        <span class="n">graph</span> <span class="o">=</span> <span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+
+        <span class="c1"># Return the number of edges in the graph.</span>
+        <span class="k">return</span> <span class="n">graph</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="calibrate_delta"><a class="viewcode-back" href="../synthgraph.html#synthgraph.calibrate_delta">[docs]</a><span class="k">def</span> <span class="nf">calibrate_delta</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">target_edges</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lo_delta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">hi_delta</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">intervals</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                    <span class="n">repetitions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">threads</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method calibrates the delta parameter for the duplication-divergence</span>
+<span class="sd">    model given a target number of edges. The method uses a modified binary</span>
+<span class="sd">    search algorithm to find the correct value for the parameter. The</span>
+<span class="sd">    algorithm calibrates the value of delta using the following steps:</span>
+
+<span class="sd">        1. Given the expected number of edges, the method creates partitions</span>
+<span class="sd">        of the search space [lo_delta, hi_delta].</span>
+
+<span class="sd">        2. For each partition, the method generates several graphs using the</span>
+<span class="sd">        duplication-divergence model with the given parameters.</span>
+
+<span class="sd">        3. The method computes the average number of edges for each partition.</span>
+
+<span class="sd">        4. If the behaviour of the average number of edges is monotonic, the</span>
+<span class="sd">        method narrows the search space to the partition including the target</span>
+<span class="sd">        number of edges and repeats the procedure. Otherwise, the method stops</span>
+<span class="sd">        and returns the average of the limits of the partition with the</span>
+<span class="sd">        expected number of edges.</span>
+
+<span class="sd">    :param n: The number of vertices in the graph.</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param target_edges: The target number of edges.</span>
+<span class="sd">    :type target_edges: int</span>
+<span class="sd">    :param alpha: The alpha parameter for the duplication-divergence model. If \</span>
+<span class="sd">    set to None, the method will use the extended duplication-divergence model. \</span>
+<span class="sd">    Otherwise, the method will use the duplication-divergence model.</span>
+<span class="sd">    :type alpha: float</span>
+<span class="sd">    :param lo_delta: The lower bound for the delta parameter.</span>
+<span class="sd">    :type lo_delta: float</span>
+<span class="sd">    :param hi_delta: The upper bound for the delta parameter.</span>
+<span class="sd">    :type hi_delta: float</span>
+<span class="sd">    :param intervals: The number of partitions for the search space.</span>
+<span class="sd">    :type intervals: int</span>
+<span class="sd">    :param repetitions: The number of graphs generated for each partition.</span>
+<span class="sd">    :type repetitions: int</span>
+<span class="sd">    :param max_iterations: The maximum number of iterations for the binary \</span>
+<span class="sd">    search algorithm.</span>
+<span class="sd">    :type max_iterations: int</span>
+<span class="sd">    :param threads: The number of threads to use for parallel execution. If \</span>
+<span class="sd">    set to -1, the method will use all available threads.</span>
+<span class="sd">    :type threads: int</span>
+<span class="sd">    :param verbose: If set to True, the method will display the progress of \</span>
+<span class="sd">    the node aggregation process using the tqdm library.</span>
+
+<span class="sd">    :return delta: The calibrated value for the delta parameter.</span>
+<span class="sd">    :rtype delta: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Create the object for parallel execution using the _DeltaGivenAlphaGraph</span>
+    <span class="c1"># or the _DeltaGraph class, according to the value of alpha.</span>
+    <span class="n">graphs</span> <span class="o">=</span> <span class="n">_DeltaGraph</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_DeltaGivenAlphaGraph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+
+    <span class="c1"># Main loop</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">iterable</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Calibrating delta&quot;</span><span class="p">,</span> <span class="n">disable</span><span class="o">=</span><span class="ow">not</span> <span class="n">verbose</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">iterable</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+        <span class="c1"># Create partitions for the search space.</span>
+        <span class="n">partitions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lo_delta</span><span class="p">,</span> <span class="n">hi_delta</span><span class="p">,</span> <span class="n">intervals</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># create list of deltas (repetitions times for each partition)</span>
+        <span class="n">deltas</span> <span class="o">=</span> <span class="p">[</span><span class="n">part</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">partitions</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">repetitions</span><span class="p">)]</span>
+
+        <span class="c1"># Executing the __call__ method for each object in parallel using Pool class.</span>
+        <span class="c1"># This computation returns a list of ints with the number of edges for</span>
+        <span class="c1"># each delta in deltas. The list is reshaped to a matrix with intervals</span>
+        <span class="c1"># rows and repetitions columns. The average number of edges for each</span>
+        <span class="c1"># partition is computed and stored in avg_edges.</span>
+        <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">threads</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">graphs</span><span class="p">,</span> <span class="n">deltas</span><span class="p">)</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">intervals</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">repetitions</span><span class="p">)</span>
+        <span class="n">avg_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Check if the behaviour of the average number of edges is monotonic.</span>
+        <span class="c1"># If it is, narrow the search space to the partition including the</span>
+        <span class="c1"># target number of edges. Otherwise, return the average of the limits</span>
+        <span class="c1"># of the partition with the expected number of edges.</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># monotonic increasing</span>
+            <span class="n">hi_delta</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&gt;=</span> <span class="n">target_edges</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lo_delta</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&lt;</span> <span class="n">target_edges</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># monotonic decreasing</span>
+            <span class="n">hi_delta</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&lt;=</span> <span class="n">target_edges</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lo_delta</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&gt;</span> <span class="n">target_edges</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Counting the number of partitions with more edges than the previous</span>
+            <span class="c1"># partition. If the number of partitions with more edges is greater</span>
+            <span class="c1"># than the number of partitions with fewer edges than the previous</span>
+            <span class="c1"># partition, the behaviour is monotonic increasing. Otherwise, it</span>
+            <span class="c1"># is monotonic decreasing.</span>
+            <span class="n">increasing_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">decreasing_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">increasing_count</span> <span class="o">&gt;</span> <span class="n">decreasing_count</span><span class="p">:</span>
+                <span class="c1"># Finding the index i such that partitions[i] is the last</span>
+                <span class="c1"># partition with fewer edges than the target number of edges.</span>
+                <span class="c1"># The target number of edges is located in the interval</span>
+                <span class="c1"># [partitions[i], partitions[i+1]].</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">avg_edges</span> <span class="o">&lt;</span> <span class="n">target_edges</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Finding the index i such that partitions[i] is the last</span>
+                <span class="c1"># partition with more edges than the target number of edges.</span>
+                <span class="c1"># The target number of edges is located in the interval</span>
+                <span class="c1"># [partitions[i], partitions[i+1]].</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">avg_edges</span> <span class="o">&gt;</span> <span class="n">target_edges</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+
+    <span class="c1"># If the maximum number of iterations is reached, return the average of</span>
+    <span class="c1"># the limits of the search space.</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">lo_delta</span><span class="p">,</span> <span class="n">hi_delta</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="calibrate_alpha"><a class="viewcode-back" href="../synthgraph.html#synthgraph.calibrate_alpha">[docs]</a><span class="k">def</span> <span class="nf">calibrate_alpha</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">target_edges</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">lo_alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">hi_alpha</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">intervals</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                    <span class="n">repetitions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">threads</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method calibrates the alpha parameter for the extended</span>
+<span class="sd">    duplication-divergence model given a target number of edges. The method</span>
+<span class="sd">    uses a modified binary search algorithm to find the correct value for</span>
+<span class="sd">    the parameter. The algorithm calibrates the value of alpha using the</span>
+<span class="sd">    following steps:</span>
+
+<span class="sd">        1. Given the expected number of edges, the method creates partitions</span>
+<span class="sd">        of the search space [lo_alpha, hi_alpha].</span>
+
+<span class="sd">        2. For each partition, the method generates several graphs using the</span>
+<span class="sd">        extended duplication-divergence model with the given parameters.</span>
+
+<span class="sd">        3. The method computes the average number of edges for each partition.</span>
+
+<span class="sd">        4. If the behaviour of the average number of edges is monotonic, the</span>
+<span class="sd">        method narrows the search space to the partition including the target</span>
+<span class="sd">        number of edges and repeats the procedure. Otherwise, the method stops</span>
+<span class="sd">        and returns the average of the limits of the partition with the</span>
+<span class="sd">        expected number of edges.</span>
+
+<span class="sd">    :param n: The number of vertices in the graph.</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param target_edges: The target number of edges.</span>
+<span class="sd">    :type target_edges: int</span>
+<span class="sd">    :param delta: The delta parameter for the extended duplication-divergence \</span>
+<span class="sd">    model.</span>
+<span class="sd">    :type delta: float</span>
+<span class="sd">    :param lo_alpha: The lower bound for the alpha parameter.</span>
+<span class="sd">    :type lo_alpha: float</span>
+<span class="sd">    :param hi_alpha: The upper bound for the alpha parameter.</span>
+<span class="sd">    :type hi_alpha: float</span>
+<span class="sd">    :param intervals: The number of partitions for the search space.</span>
+<span class="sd">    :type intervals: int</span>
+<span class="sd">    :param repetitions: The number of graphs generated for each partition.</span>
+<span class="sd">    :type repetitions: int</span>
+<span class="sd">    :param max_iterations: The maximum number of iterations for the binary \</span>
+<span class="sd">    search algorithm.</span>
+<span class="sd">    :type max_iterations: int</span>
+<span class="sd">    :param threads: The number of threads to use for parallel execution. If \</span>
+<span class="sd">    set to -1, the method will use all available threads.</span>
+<span class="sd">    :type threads: int</span>
+<span class="sd">    :param verbose: If set to True, the method will display the progress of \</span>
+<span class="sd">    the node aggregation process using the tqdm library.</span>
+
+<span class="sd">    :return alpha: The calibrated value for the alpha parameter.</span>
+<span class="sd">    :rtype alpha: float</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Create the object for parallel execution using the _AlphaGivenDeltaGraph</span>
+    <span class="c1"># class.</span>
+    <span class="n">graphs</span> <span class="o">=</span> <span class="n">_AlphaGivenDeltaGraph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">)</span>
+
+    <span class="c1"># Main loop</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">iterable</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Calibrating alpha&quot;</span><span class="p">,</span> <span class="n">disable</span><span class="o">=</span><span class="ow">not</span> <span class="n">verbose</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">iterable</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+        <span class="c1"># Create partitions for the search space</span>
+        <span class="n">partitions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lo_alpha</span><span class="p">,</span> <span class="n">hi_alpha</span><span class="p">,</span> <span class="n">intervals</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># create list of alphas (repetitions times for each partition)</span>
+        <span class="n">alphas</span> <span class="o">=</span> <span class="p">[</span><span class="n">part</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">partitions</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">repetitions</span><span class="p">)]</span>
+
+        <span class="c1"># Executing the __call__ method for each object in parallel using Pool class.</span>
+        <span class="c1"># This computation returns a list of ints with the number of edges for</span>
+        <span class="c1"># each delta in deltas. The list is reshaped to a matrix with intervals</span>
+        <span class="c1"># rows and repetitions columns. The average number of edges for each</span>
+        <span class="c1"># partition is computed and stored in avg_edges.</span>
+        <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="n">threads</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+            <span class="n">edges</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">graphs</span><span class="p">,</span> <span class="n">alphas</span><span class="p">)</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">intervals</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">repetitions</span><span class="p">)</span>
+        <span class="n">avg_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Check if the behaviour of the average number of edges is monotonic.</span>
+        <span class="c1"># If it is, narrow the search space to the partition including the</span>
+        <span class="c1"># target number of edges. Otherwise, return the average of the limits</span>
+        <span class="c1"># of the partition with the expected number of edges.</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># monotonic increasing</span>
+            <span class="n">hi_alpha</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&gt;=</span> <span class="n">target_edges</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lo_alpha</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&lt;</span> <span class="n">target_edges</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="c1"># monotonic decreasing</span>
+            <span class="n">hi_alpha</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&lt;=</span> <span class="n">target_edges</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lo_alpha</span> <span class="o">=</span> <span class="n">partitions</span><span class="p">[</span><span class="n">avg_edges</span> <span class="o">&gt;</span> <span class="n">target_edges</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Counting the number of partitions with more edges than the previous</span>
+            <span class="c1"># partition. If the number of partitions with more edges is greater</span>
+            <span class="c1"># than the number of partitions with fewer edges than the previous</span>
+            <span class="c1"># partition, the behaviour is monotonic increasing. Otherwise, it</span>
+            <span class="c1"># is monotonic decreasing.</span>
+            <span class="n">increasing_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">decreasing_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">avg_edges</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">increasing_count</span> <span class="o">&gt;</span> <span class="n">decreasing_count</span><span class="p">:</span>
+                <span class="c1"># Finding the index i such that partitions[i] is the last</span>
+                <span class="c1"># partition with fewer edges than the target number of edges.</span>
+                <span class="c1"># The target number of edges is located in the interval</span>
+                <span class="c1"># [partitions[i], partitions[i+1]].</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">avg_edges</span> <span class="o">&lt;</span> <span class="n">target_edges</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Finding the index i such that partitions[i] is the last</span>
+                <span class="c1"># partition with more edges than the target number of edges.</span>
+                <span class="c1"># The target number of edges is located in the interval</span>
+                <span class="c1"># [partitions[i], partitions[i+1]].</span>
+                <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">avg_edges</span> <span class="o">&gt;</span> <span class="n">target_edges</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
+
+        <span class="c1"># If the maximum number of iterations is reached, return the average of</span>
+        <span class="c1"># the limits of the search space.</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">lo_alpha</span><span class="p">,</span> <span class="n">hi_alpha</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="synth_graph_from_network"><a class="viewcode-back" href="../synthgraph.html#synthgraph.synth_graph_from_network">[docs]</a><span class="k">def</span> <span class="nf">synth_graph_from_network</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lo_delta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">hi_delta</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">intervals</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                             <span class="n">repetitions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">threads</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                             <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">track_evolution</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function generates a synthetic graph from a given network using the</span>
+<span class="sd">    extended duplication-divergence model. The parameters of the model are</span>
+<span class="sd">    calibrated by considering the number of vertices as n and searching for</span>
+<span class="sd">    the value of delta that generates a graph with the same number of edges</span>
+<span class="sd">    as the given network. The alpha parameter should be given as input to</span>
+<span class="sd">    the function.</span>
+
+<span class="sd">    :param g: The network used as base to extract information to generate \</span>
+<span class="sd">    the synthetic graph.</span>
+<span class="sd">    :type g: networkx.Graph</span>
+<span class="sd">    :param alpha: The alpha parameter for the extended duplication-divergence. \</span>
+<span class="sd">    if set to None, the duplication-divergence model is used.</span>
+<span class="sd">    :type alpha: float</span>
+<span class="sd">    :param lo_delta: The lower bound for the delta parameter.</span>
+<span class="sd">    :type lo_delta: float</span>
+<span class="sd">    :param hi_delta: The upper bound for the delta parameter.</span>
+<span class="sd">    :type hi_delta: float</span>
+<span class="sd">    :param intervals: The number of partitions for the search space.</span>
+<span class="sd">    :type intervals: int</span>
+<span class="sd">    :param repetitions: The number of graphs generated for each partition.</span>
+<span class="sd">    :type repetitions: int</span>
+<span class="sd">    :param max_iterations: The maximum number of iterations for the binary \</span>
+<span class="sd">    search algorithm.</span>
+<span class="sd">    :type max_iterations: int</span>
+<span class="sd">    :param threads: The number of threads to use for parallel execution. If \</span>
+<span class="sd">    set to -1, the method will use all available threads.</span>
+<span class="sd">    :type threads: int</span>
+<span class="sd">    :param verbose: If set to True, the method will display the progress of \</span>
+<span class="sd">    the node aggregation process using the tqdm library.</span>
+<span class="sd">    :type verbose: bool</span>
+<span class="sd">    :param seed: The seed for the random number generator.</span>
+<span class="sd">    :type seed: int</span>
+<span class="sd">    :param track_evolution: If set to True, the method will return the \</span>
+<span class="sd">    evolution of the number of edges for each partition.</span>
+<span class="sd">    :type track_evolution: bool</span>
+
+<span class="sd">    :return g_synth: The synthetic graph generated using the extended \</span>
+<span class="sd">    duplication-divergence model.</span>
+<span class="sd">    :rtype g_synth: networkx.Graph</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Get the number of vertices and edges of the given network.</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span>
+    <span class="n">target_edges</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span>
+
+    <span class="c1"># Calibrate the delta parameter.</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">calibrate_delta</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">target_edges</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">lo_delta</span><span class="p">,</span> <span class="n">hi_delta</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span>
+                            <span class="n">repetitions</span><span class="p">,</span> <span class="n">max_iterations</span><span class="p">,</span> <span class="n">threads</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Generate the synthetic graph.</span>
+    <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">g_synth</span> <span class="o">=</span> <span class="n">duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+                                               <span class="n">track_evolution</span><span class="o">=</span><span class="n">track_evolution</span><span class="p">,</span>
+                                               <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">g_synth</span> <span class="o">=</span> <span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+                                                        <span class="n">track_evolution</span><span class="o">=</span><span class="n">track_evolution</span><span class="p">,</span>
+                                                        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Return the synthetic graph.</span>
+    <span class="k">return</span> <span class="n">g_synth</span></div>
+
+
+<div class="viewcode-block" id="synth_graph_from_intersection"><a class="viewcode-back" href="../synthgraph.html#synthgraph.synth_graph_from_intersection">[docs]</a><span class="k">def</span> <span class="nf">synth_graph_from_intersection</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">g2</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lo_delta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">hi_delta</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span>
+                                  <span class="n">intervals</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">repetitions</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                                  <span class="n">threads</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                  <span class="n">track_evolution</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function generates a synthetic graph from the intersection of two</span>
+<span class="sd">    given networks using the extended duplication-divergence model. The</span>
+<span class="sd">    parameters of the model are calibrated by considering the number of</span>
+<span class="sd">    vertices as n and searching for the value of delta that generates a</span>
+<span class="sd">    graph with the same number of edges as the given network. The alpha</span>
+<span class="sd">    parameter should be given as input to the function.</span>
+
+<span class="sd">    The number of nodes to use is the intersection between the two networks,</span>
+<span class="sd">    g1 and g2. The number of edges to use is the maximum between the number</span>
+<span class="sd">    of edges from g1 having both nodes in the node intersection and the number</span>
+<span class="sd">    of edges from g2 having both nodes in the node intersection.</span>
+
+<span class="sd">    :param g1: The first network used as base to extract information to \</span>
+<span class="sd">    generate the synthetic graph.</span>
+<span class="sd">    :type g1: networkx.Graph</span>
+<span class="sd">    :param g2: The second network used as base to extract information to \</span>
+<span class="sd">    generate the synthetic graph.</span>
+<span class="sd">    :type g2: networkx.Graph</span>
+<span class="sd">    :param alpha: The alpha parameter for the extended duplication-divergence. \</span>
+<span class="sd">    if set to None, the duplication-divergence model is used.</span>
+<span class="sd">    :type alpha: float</span>
+<span class="sd">    :param lo_delta: The lower bound for the delta parameter.</span>
+<span class="sd">    :type lo_delta: float</span>
+<span class="sd">    :param hi_delta: The upper bound for the delta parameter.</span>
+<span class="sd">    :type hi_delta: float</span>
+<span class="sd">    :param intervals: The number of partitions for the search space.</span>
+<span class="sd">    :type intervals: int</span>
+<span class="sd">    :param repetitions: The number of graphs generated for each partition.</span>
+<span class="sd">    :type repetitions: int</span>
+<span class="sd">    :param max_iterations: The maximum number of iterations for the binary \</span>
+<span class="sd">    search algorithm.</span>
+<span class="sd">    :type max_iterations: int</span>
+<span class="sd">    :param threads: The number of threads to use for parallel execution. If \</span>
+<span class="sd">    set to -1, the method will use all available threads.</span>
+<span class="sd">    :type threads: int</span>
+<span class="sd">    :param verbose: If set to True, the method will display the progress of \</span>
+<span class="sd">    the node aggregation process using the tqdm library.</span>
+<span class="sd">    :type verbose: bool</span>
+<span class="sd">    :param seed: The seed for the random number generator.</span>
+<span class="sd">    :type seed: int</span>
+<span class="sd">    :param track_evolution: If set to True, the method will return the \</span>
+<span class="sd">    evolution of the number of edges for each partition.</span>
+<span class="sd">    :type track_evolution: bool</span>
+
+<span class="sd">    :return g_synth: The synthetic graph generated using the extended \</span>
+<span class="sd">    duplication-divergence model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Generate the subset of nodes appearing in both networks.</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">g1</span><span class="o">.</span><span class="n">nodes</span><span class="p">())</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">g2</span><span class="o">.</span><span class="n">nodes</span><span class="p">()))</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+
+    <span class="c1"># Generate the subset of edges appearing in both networks using the</span>
+    <span class="c1"># intersection of the nodes.</span>
+    <span class="n">g1_edges</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span> <span class="n">nodes</span><span class="p">)</span><span class="o">.</span><span class="n">edges</span><span class="p">()</span>
+    <span class="n">g2_edges</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">g2</span><span class="p">,</span> <span class="n">nodes</span><span class="p">)</span><span class="o">.</span><span class="n">edges</span><span class="p">()</span>
+    <span class="n">target_edges</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">g1_edges</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">g2_edges</span><span class="p">))</span>
+
+    <span class="c1"># Calibrate the delta parameter.</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">calibrate_delta</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">target_edges</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">lo_delta</span><span class="p">,</span> <span class="n">hi_delta</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span>
+                            <span class="n">repetitions</span><span class="p">,</span> <span class="n">max_iterations</span><span class="p">,</span> <span class="n">threads</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Generate the synthetic graph.</span>
+    <span class="k">if</span> <span class="n">alpha</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">g_synth</span> <span class="o">=</span> <span class="n">duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+                                               <span class="n">track_evolution</span><span class="o">=</span><span class="n">track_evolution</span><span class="p">,</span>
+                                               <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">g_synth</span> <span class="o">=</span> <span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+                                                        <span class="n">track_evolution</span><span class="o">=</span><span class="n">track_evolution</span><span class="p">,</span>
+                                                        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Return the synthetic graph.</span>
+    <span class="k">return</span> <span class="n">g_synth</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Set the parameters for the extended duplication-divergence model.</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">DELTAS</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
+    <span class="n">ALPHAS</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">]</span>
+    <span class="n">TARGET_EDGES</span> <span class="o">=</span> <span class="mi">1500</span>
+    <span class="n">INTERVALS</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">REPETITIONS</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">MAX_ITERATIONS</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">THREADS</span> <span class="o">=</span> <span class="mi">7</span>
+    <span class="n">VERBOSE</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;Calibration of delta values starts.&quot;</span><span class="p">)</span>
+    <span class="c1"># Calibrate the delta parameter, without alpha.</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">calibrate_delta</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">TARGET_EDGES</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">intervals</span><span class="o">=</span><span class="n">INTERVALS</span><span class="p">,</span> <span class="n">repetitions</span><span class="o">=</span><span class="n">REPETITIONS</span><span class="p">,</span>
+                        <span class="n">max_iterations</span><span class="o">=</span><span class="n">MAX_ITERATIONS</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="n">THREADS</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">VERBOSE</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;alpha = None --&gt; delta = </span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">0.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Calibrate the delta parameter, given alpha.</span>
+    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ALPHAS</span><span class="p">:</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">calibrate_delta</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">TARGET_EDGES</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">intervals</span><span class="o">=</span><span class="n">INTERVALS</span><span class="p">,</span> <span class="n">repetitions</span><span class="o">=</span><span class="n">REPETITIONS</span><span class="p">,</span>
+                            <span class="n">max_iterations</span><span class="o">=</span><span class="n">MAX_ITERATIONS</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="n">THREADS</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;alpha = </span><span class="si">{</span><span class="n">a</span><span class="si">:</span><span class="s2">0.2f</span><span class="si">}</span><span class="s2"> --&gt; delta = </span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">0.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;Calibration of alpha values starts.&quot;</span><span class="p">)</span>
+    <span class="c1"># Calibrate the alpha parameter.</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">DELTAS</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">calibrate_alpha</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">TARGET_EDGES</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">intervals</span><span class="o">=</span><span class="n">INTERVALS</span><span class="p">,</span> <span class="n">repetitions</span><span class="o">=</span><span class="n">REPETITIONS</span><span class="p">,</span>
+                            <span class="n">max_iterations</span><span class="o">=</span><span class="n">MAX_ITERATIONS</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="n">THREADS</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;delta = </span><span class="si">{</span><span class="n">d</span><span class="si">:</span><span class="s2">0.2f</span><span class="si">}</span><span class="s2"> --&gt; alpha = </span><span class="si">{</span><span class="n">a</span><span class="si">:</span><span class="s2">0.5f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;Calibration ends.&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Nicolas Lopez-Rozo*, Jorge Finke, Camilo Rocha.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

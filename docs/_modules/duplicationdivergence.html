@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>duplicationdivergence &mdash; Synthetic Graph Generator 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Synthetic Graph Generator
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Synthetic Graph Generation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Synthetic Graph Generator</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">duplicationdivergence</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for duplicationdivergence</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the implementation of the duplication-divergence model,</span>
+<span class="sd">both considering only duplication and divergence, and also considering the</span>
+<span class="sd">possibility of connecting the duplicated node to other nodes not connected to</span>
+<span class="sd">it.</span>
+
+<span class="sd">Algorithmic description</span>
+<span class="sd">-----------------------</span>
+
+<span class="sd">It is based on the following paper:</span>
+
+<span class="sd">Pastor-Satorras R, Smith E, Solé RV. *Evolving protein interaction networks</span>
+<span class="sd">through gene duplication*. J Theor Biol. 2003 May 21;222(2):199-210. doi:</span>
+<span class="sd">10.1016/s0022-5193(03)00028-6.</span>
+
+<span class="sd">The model starts from a complete graph with two nodes and then repeats this process:</span>
+
+<span class="sd">1. A node is chosen at random and duplicated, creating a new node.</span>
+
+<span class="sd">2. With probability delta, each of the edges of the duplicated node may be removed.</span>
+
+<span class="sd">3. With probability alpha, the duplicated node may become connected to any of the nodes \</span>
+<span class="sd">not connected to it before the duplication.</span>
+
+<span class="sd">|</span>
+
+<span class="sd">**API Reference**</span>
+<span class="sd">-----------------</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pickle</span> <span class="k">as</span> <span class="nn">pk</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">from</span> <span class="nn">statistics</span> <span class="kn">import</span> <span class="n">mean</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy.random</span> <span class="kn">import</span> <span class="n">default_rng</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+<span class="n">random_generator</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="timestamp"><a class="viewcode-back" href="../duplicationdivergence.html#duplicationdivergence.timestamp">[docs]</a><span class="k">def</span> <span class="nf">timestamp</span><span class="p">(</span><span class="n">msg</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function prints a timestamp with a message and a prefix (both optional)</span>
+
+<span class="sd">    :param msg: Message to be shown after timestamp</span>
+<span class="sd">    :type msg: str</span>
+<span class="sd">    :param prefix: Message to be shown before timestamp</span>
+<span class="sd">    :type prefix: str</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">%Y-%m-%d %H:%M:%S&quot;</span><span class="p">),</span> <span class="n">msg</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_set_generator</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">random_generator</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Procedure to fix the seed for random sample procedures</span>
+
+<span class="sd">    :param seed: random seed</span>
+<span class="sd">    :type seed: int</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">random_generator</span> <span class="o">=</span> <span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_sample_binomial</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample size considering a binomial experiment</span>
+
+<span class="sd">    :param n: Number of trials</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param p: Success probability</span>
+<span class="sd">    :type n: float</span>
+
+<span class="sd">    :return ans: The sampled value. Number of successes</span>
+<span class="sd">    :rtype ans: int </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">random_generator</span>
+    <span class="n">ans</span> <span class="o">=</span> <span class="n">random_generator</span><span class="o">.</span><span class="n">binomial</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ans</span>
+
+
+<div class="viewcode-block" id="extended_duplication_divergence_graph"><a class="viewcode-back" href="../duplicationdivergence.html#duplicationdivergence.extended_duplication_divergence_graph">[docs]</a><span class="k">def</span> <span class="nf">extended_duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                          <span class="n">track_evolution</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Duplication-Divergence model where there is a possibility to connect a</span>
+<span class="sd">    duplicated node to other edges not connected to it</span>
+
+<span class="sd">    :param n: Number of nodes of the final network</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param delta: Probability of removing an edge from the duplicated node</span>
+<span class="sd">    :type delta: float</span>
+<span class="sd">    :param alpha: Probability of connecting the duplicated node with any of the</span>
+<span class="sd">        other nodes not connected to it, when the duplication occurred</span>
+<span class="sd">    :type alpha: float</span>
+<span class="sd">    :param seed: (optional) Seed for the random number generator. Default: None</span>
+<span class="sd">    :type seed: float</span>
+<span class="sd">    :param track_evolution: (Optional) Whether topological parameters are stored</span>
+<span class="sd">        and return at the end of the simulation. The returned metrics are:</span>
+<span class="sd">        current appended node, number of edges, average square clustering,</span>
+<span class="sd">        transitivity (triangle count) and degree histogram.</span>
+<span class="sd">        BEWARE: This highly increases the computational complexity of the model.</span>
+<span class="sd">        Use at your own discretion.</span>
+<span class="sd">    :type track_evolution: bool</span>
+<span class="sd">    :param verbose: (optional) Whether the progress should be displayed on the</span>
+<span class="sd">        screen using tqdm. Default value: False</span>
+<span class="sd">    :type verbose: bool</span>
+
+<span class="sd">    :return g: The resulting graph, 0-indexed. If track_evolution is set to True,</span>
+<span class="sd">        then the return value is a tuple (graph, list(metrics))</span>
+<span class="sd">    :rtype g: networkx.Graph</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_set_generator</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">complete_graph</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">iterable</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> <span class="k">if</span> <span class="n">verbose</span> <span class="k">else</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>     <span class="c1"># the node to be duplicated</span>
+        <span class="n">deg</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>             <span class="c1"># degree of node j</span>
+        <span class="n">preserved</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">_sample_binomial</span><span class="p">(</span><span class="n">deg</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">delta</span><span class="p">))</span>  <span class="c1"># how many deletions</span>
+        <span class="n">new_edges</span> <span class="o">=</span> <span class="n">_sample_binomial</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="n">deg</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>          <span class="c1"># how many new edges</span>
+
+        <span class="c1"># first, compute the preserved edges</span>
+        <span class="n">list_preserved</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span> <span class="n">preserved</span><span class="p">)</span>
+        <span class="c1"># then, compute the new edges</span>
+        <span class="n">list_new</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">nodes</span><span class="p">())</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">])),</span> <span class="n">new_edges</span><span class="p">)</span>
+
+        <span class="c1"># finally, add everything to the graph g</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">list_preserved</span><span class="p">:</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">list_new</span><span class="p">:</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">track_evolution</span><span class="p">:</span>
+            <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">characterize_graph</span><span class="p">(</span><span class="n">g</span><span class="p">)))</span>
+    <span class="n">ans</span> <span class="o">=</span> <span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span> <span class="k">if</span> <span class="n">track_evolution</span> <span class="k">else</span> <span class="n">g</span>
+    <span class="k">return</span> <span class="n">ans</span></div>
+
+
+<div class="viewcode-block" id="duplication_divergence_graph"><a class="viewcode-back" href="../duplicationdivergence.html#duplicationdivergence.duplication_divergence_graph">[docs]</a><span class="k">def</span> <span class="nf">duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                 <span class="n">track_evolution</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Duplication-Divergence model where there is a possibility to connect a</span>
+<span class="sd">    duplicated node to other edges not connected to it</span>
+
+<span class="sd">    :param n: Number of nodes of the final network</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param delta: Probability of removing an edge from the duplicated node</span>
+<span class="sd">    :type delta: float</span>
+<span class="sd">    :param seed: (optional) Seed for the random number generator. Default: None</span>
+<span class="sd">    :type seed: float</span>
+<span class="sd">    :param track_evolution: (Optional) Whether topological parameters are stored</span>
+<span class="sd">        and return at the end of the simulation. The returned metrics are:</span>
+<span class="sd">        current appended node, number of edges, average square clustering,</span>
+<span class="sd">        transitivity (triangle count) and degree histogram.</span>
+<span class="sd">        BEWARE: This highly increases the computational complexity of the model.</span>
+<span class="sd">        Use at your own discretion.</span>
+<span class="sd">    :type track_evolution: bool</span>
+<span class="sd">    :param verbose: (optional) Whether the progress should be displayed on the</span>
+<span class="sd">        screen using tqdm. Default value: False</span>
+<span class="sd">    :type verbose: bool</span>
+
+<span class="sd">    :return g: The resulting graph, 0-indexed. If track_evolution is set to True,</span>
+<span class="sd">        then the return value is a tuple (graph, list(metrics))</span>
+<span class="sd">    :rtype g: networkx.Graph</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_set_generator</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">complete_graph</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">iterable</span> <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> <span class="k">if</span> <span class="n">verbose</span> <span class="k">else</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">:</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>     <span class="c1"># the node to be duplicated</span>
+        <span class="n">deg</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">])</span>             <span class="c1"># degree of node j</span>
+        <span class="n">preserved</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">_sample_binomial</span><span class="p">(</span><span class="n">deg</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">delta</span><span class="p">))</span>  <span class="c1"># how many deletions</span>
+
+        <span class="c1"># first, compute the preserved edges</span>
+        <span class="n">list_preserved</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="n">j</span><span class="p">]),</span> <span class="n">preserved</span><span class="p">)</span>
+
+        <span class="c1"># finally, add everything to the graph g</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">list_preserved</span><span class="p">:</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">track_evolution</span><span class="p">:</span>
+            <span class="n">metrics</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">characterize_graph</span><span class="p">(</span><span class="n">g</span><span class="p">)))</span>
+    <span class="n">ans</span> <span class="o">=</span> <span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span> <span class="k">if</span> <span class="n">track_evolution</span> <span class="k">else</span> <span class="n">g</span>
+    <span class="k">return</span> <span class="n">ans</span></div>
+
+
+<div class="viewcode-block" id="characterize_graph"><a class="viewcode-back" href="../duplicationdivergence.html#duplicationdivergence.characterize_graph">[docs]</a><span class="k">def</span> <span class="nf">characterize_graph</span><span class="p">(</span><span class="n">g</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Characterize a graph by computing the number of edges, the average square</span>
+<span class="sd">    clustering coefficient, the transitivity and the degree distribution. For</span>
+<span class="sd">    the latter, the degree distribution is returned as a list of integers</span>
+<span class="sd">    where the i-th element is the number of nodes with degree i.</span>
+
+<span class="sd">    :param g: The graph to characterize</span>
+<span class="sd">    :type g: networkx.Graph</span>
+
+<span class="sd">    :return (edg, squ, tri, deg): A tuple containing the number of edges, the</span>
+<span class="sd">        average square clustering coefficient, the transitivity and the degree</span>
+<span class="sd">        distribution of the graph.</span>
+<span class="sd">    :rtype: tuple</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">edg</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span>
+    <span class="n">squ</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">square_clustering</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">tri</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">transitivity</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+    <span class="n">deg</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">degree_histogram</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">edg</span><span class="p">,</span> <span class="n">squ</span><span class="p">,</span> <span class="n">tri</span><span class="p">,</span> <span class="n">deg</span></div>
+
+
+<div class="viewcode-block" id="characterize_complement"><a class="viewcode-back" href="../duplicationdivergence.html#duplicationdivergence.characterize_complement">[docs]</a><span class="k">def</span> <span class="nf">characterize_complement</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Characterize the complement of a duplication-divergence graph by computing</span>
+<span class="sd">    the number of edges, the average square clustering coefficient, the</span>
+<span class="sd">    transitivity and the degree distribution. For the latter, the degree</span>
+<span class="sd">    distribution is returned as a list of integers where the i-th element is</span>
+<span class="sd">    the number of nodes with degree i. If alpha is different from 0 or not</span>
+<span class="sd">    given, the extended duplication-divergence graph is used instead.</span>
+
+<span class="sd">    The complement of a graph is the graph with the same nodes and all the</span>
+<span class="sd">    edges that are not in the original graph. This excludes self-loops and</span>
+<span class="sd">    multiple edges.</span>
+
+<span class="sd">    :param n: The number of nodes in the graph</span>
+<span class="sd">    :type n: int</span>
+<span class="sd">    :param delta: The probability of removing an edge after the duplication</span>
+<span class="sd">        process</span>
+<span class="sd">    :type delta: float</span>
+<span class="sd">    :param alpha: The probability of adding an edge between the duplicated</span>
+<span class="sd">        node and a random node not connected to the original node</span>
+<span class="sd">    :type alpha: float</span>
+
+<span class="sd">    :return (edg, squ, tri, deg): A tuple containing the number of edges, the</span>
+<span class="sd">        average square clustering coefficient, the transitivity and the degree</span>
+<span class="sd">        distribution of the graph.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">alpha</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">complement</span><span class="p">(</span><span class="n">duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">complement</span><span class="p">(</span><span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="p">))</span>
+    <span class="n">edg</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span>
+    <span class="n">squ</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">square_clustering</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">tri</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">transitivity</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+    <span class="n">deg</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">degree_histogram</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">edg</span><span class="p">,</span> <span class="n">squ</span><span class="p">,</span> <span class="n">tri</span><span class="p">,</span> <span class="n">deg</span></div>
+
+
+<span class="k">def</span> <span class="nf">_plot_distribution</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">dist_type</span><span class="o">=</span><span class="s1">&#39;ccdf&#39;</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;plot&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Plot a distribution of a graph. It can be one of the following:</span>
+<span class="sd">    - probability density distribution</span>
+<span class="sd">    - clustering coefficient distribution</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    g : an undirected graph</span>
+<span class="sd">    dist_type : &#39;pdf&#39;,&#39;cdf&#39;,&#39;ccdf&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># plt.rcParams[&#39;text.usetex&#39;] = True</span>
+    <span class="c1"># plt.rcParams[&#39;text.latex.preamble&#39;] = [&#39;\\usepackage[cmbright]{sfmath}&#39;]</span>
+    <span class="c1"># plt.rcParams[&#39;font.family&#39;] = &#39;sans-serif&#39;</span>
+    <span class="c1"># plt.rcParams[&#39;font.sans-serif&#39;] = &#39;cmbright&#39;</span>
+    <span class="c1"># plt.rcParams[&#39;font.size&#39;] = 15</span>
+    <span class="c1"># dictionary node:degree in_values = sorted(set(in_degrees.values()))</span>
+    <span class="n">degrees</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">g</span><span class="o">.</span><span class="n">degree</span><span class="p">())</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">degrees</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    <span class="n">hist</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">degrees</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+    <span class="n">cum_hist</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">cumulative_distribution</span><span class="p">(</span><span class="n">hist</span><span class="p">)</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">6.5</span><span class="p">,</span> <span class="mf">6.5</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;$k$&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dist_type</span> <span class="o">==</span> <span class="s1">&#39;pdf&#39;</span><span class="p">:</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">hist</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;$p(k)$&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Probability Density Function&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">dist_type</span> <span class="o">==</span> <span class="s1">&#39;cdf&#39;</span><span class="p">:</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="nb">zip</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">cum_hist</span><span class="p">)]</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;$P(K&lt;k)$&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Cumulative Probability Function&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">dist_type</span> <span class="o">==</span> <span class="s1">&#39;ccdf&#39;</span><span class="p">:</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cum_hist</span><span class="p">))))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;$P(K </span><span class="se">\\</span><span class="s1">geq k)$&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Complementary Cumulative Probability Function&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;distribution type should be one of [&#39;pdf&#39;, &#39;cdf&#39;, &#39;ccdf&#39;]&quot;</span><span class="p">)</span>
+    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">k</span> <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">items</span><span class="p">],</span> <span class="p">[</span><span class="n">v</span> <span class="k">for</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="ow">in</span> <span class="n">items</span><span class="p">])</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;auto&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of nodes: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of edges: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of connected components: </span><span class="si">{</span><span class="n">nx</span><span class="o">.</span><span class="n">number_connected_components</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">display</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;distribution_&#39;</span><span class="o">+</span><span class="n">label</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">dist_type</span><span class="o">+</span><span class="s1">&#39;.pdf&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">items</span>
+
+
+<span class="k">def</span> <span class="nf">_my_boxplot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">x_label</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">y_label</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">x_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">y_log</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">edge_color</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">fill_color</span><span class="o">=</span><span class="s1">&#39;lightblue&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="n">bp</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">patch_artist</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;boxes&#39;</span><span class="p">,</span> <span class="s1">&#39;whiskers&#39;</span><span class="p">,</span> <span class="s1">&#39;fliers&#39;</span><span class="p">,</span> <span class="s1">&#39;means&#39;</span><span class="p">,</span> <span class="s1">&#39;caps&#39;</span><span class="p">]:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">bp</span><span class="p">[</span><span class="n">element</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">edge_color</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">patch</span> <span class="ow">in</span> <span class="n">bp</span><span class="p">[</span><span class="s1">&#39;boxes&#39;</span><span class="p">]:</span>
+        <span class="n">patch</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="n">fill_color</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">x_label</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">y_label</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x_log</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">y_log</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_my_violin_plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">x_label</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">y_label</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">x_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">y_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">patch_artist</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mf">2.5</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">violinplot</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">showmeans</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">showmedians</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">showextrema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">x_label</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">y_label</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">x_log</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">y_log</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">filename</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">600</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_test1</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Testing function: This function creates a network using the</span>
+<span class="sd">    extended_duplication_divergence_model and characterizes it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">]</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.01</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">delta</span><span class="p">:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="n">d</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Delta: </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of nodes: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of edges: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of connected components: </span><span class="si">{</span><span class="n">nx</span><span class="o">.</span><span class="n">number_connected_components</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average number of triangles: </span><span class="si">{</span><span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">triangles</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average square clustering: </span><span class="si">{</span><span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">square_clustering</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-----------------------------------&quot;</span><span class="p">)</span>
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;test1 ends...&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_test2</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;This function characterizes the complementary graph on the </span>
+<span class="sd">    model for different values of p</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="n">lo</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">hi</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">intervals</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">repetitions</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">num_threads</span> <span class="o">=</span> <span class="mi">7</span>
+
+    <span class="c1"># p = 0 is irrelevant, isolated nodes</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">intervals</span><span class="o">+</span><span class="mi">1</span><span class="p">))[</span><span class="mi">1</span><span class="p">:]</span> 
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s2">&quot;test_results/complement.pkl&quot;</span><span class="p">):</span>
+        <span class="n">edges</span><span class="p">,</span> <span class="n">square_coeff</span><span class="p">,</span> <span class="n">tri_clust</span><span class="p">,</span> <span class="n">deg_dist</span><span class="p">,</span> <span class="n">prob</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">num_threads</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
+            <span class="n">timestamp</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting interval @ </span><span class="si">{</span><span class="n">p</span><span class="si">:</span><span class="s2">0.2f</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            <span class="n">ans</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">starmap_async</span><span class="p">(</span><span class="n">characterize_complement</span><span class="p">,</span> <span class="p">[(</span><span class="n">n</span><span class="p">,</span> <span class="n">p</span><span class="p">)]</span> <span class="o">*</span> <span class="n">repetitions</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;Analyzing data...&quot;</span><span class="p">)</span>
+            <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">ans</span><span class="p">)</span>
+            <span class="n">edges</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+            <span class="n">square_coeff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+            <span class="n">tri_clust</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="c1"># relative degree distribution: averaging the degree distribution and append it to deg_dist</span>
+            <span class="n">mx_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">d</span><span class="p">])</span>
+            <span class="n">deg</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">mx_size</span>
+            <span class="k">for</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
+                <span class="n">mx_sum</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">)):</span>
+                    <span class="n">deg</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">arr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/</span> <span class="n">mx_sum</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mx_size</span><span class="p">):</span>
+                <span class="n">deg</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">/=</span> <span class="n">repetitions</span>
+            <span class="n">deg_dist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">deg</span><span class="p">)</span>
+            <span class="n">prob</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">pk</span><span class="o">.</span><span class="n">dump</span><span class="p">((</span><span class="n">edges</span><span class="p">,</span> <span class="n">square_coeff</span><span class="p">,</span> <span class="n">tri_clust</span><span class="p">,</span> <span class="n">deg_dist</span><span class="p">,</span> <span class="n">prob</span><span class="p">),</span>
+                <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test_results/complement.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">edges</span><span class="p">,</span> <span class="n">square_coeff</span><span class="p">,</span> <span class="n">tri_clust</span><span class="p">,</span> <span class="n">deg_dist</span><span class="p">,</span> <span class="n">prob</span> <span class="o">=</span> <span class="n">pk</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test_results/complement.pkl&quot;</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">))</span>
+
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;Presenting plots...&quot;</span><span class="p">)</span>
+    <span class="n">_my_boxplot</span><span class="p">(</span><span class="n">prob</span><span class="p">,</span> <span class="n">edges</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Edges as a function of p&quot;</span><span class="p">,</span> <span class="n">x_label</span><span class="o">=</span><span class="s1">&#39;Probability&#39;</span><span class="p">,</span>
+                <span class="n">y_label</span><span class="o">=</span><span class="s1">&#39;Number of Edges&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test_results/edges.pdf&#39;</span><span class="p">)</span>
+    <span class="n">_my_violin_plot</span><span class="p">(</span><span class="n">prob</span><span class="p">,</span> <span class="n">square_coeff</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Square Clustering Coefficient&#39;</span><span class="p">,</span>
+                    <span class="n">x_label</span><span class="o">=</span><span class="s1">&#39;Probability&#39;</span><span class="p">,</span> <span class="n">y_label</span><span class="o">=</span><span class="s1">&#39;Average Square Clustering&#39;</span><span class="p">,</span>
+                    <span class="n">y_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test_results/square_coeff.pdf&#39;</span><span class="p">)</span>
+    <span class="n">_my_violin_plot</span><span class="p">(</span><span class="n">prob</span><span class="p">,</span> <span class="n">tri_clust</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Triangle Clustering Coefficient&#39;</span><span class="p">,</span>
+                    <span class="n">x_label</span><span class="o">=</span><span class="s1">&#39;Probability&#39;</span><span class="p">,</span> <span class="n">y_label</span><span class="o">=</span><span class="s1">&#39;Average Triangle Clustering&#39;</span><span class="p">,</span>
+                    <span class="n">y_log</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;test_results/tri_coeff.pdf&#39;</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Degree distribution&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>      <span class="c1"># % 8 only 0.1, 0.5, 0.9 or % 4 also for 0.3 and 0.7</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">deg_dist</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">cumulative_distribution</span><span class="p">(</span><span class="n">deg_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+            <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">tmp</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;p=</span><span class="si">{</span><span class="n">p</span><span class="si">:</span><span class="s2">0.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+            <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">tmp</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;p=</span><span class="si">{</span><span class="n">p</span><span class="si">:</span><span class="s2">0.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+            
+    <span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">which</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Cumulative degree distribution&quot;</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Complementary cumulative degree distribution&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Degree&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Frequency&quot;</span><span class="p">)</span>
+    <span class="c1"># plt.xscale(&#39;log&#39;)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="n">ax2</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="c1"># plt.show()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;test_results/degree_distribution.pdf&quot;</span><span class="p">)</span>
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;test2 ends...&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_test3</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;This function creates a network using the</span>
+<span class="sd">    duplication_divergence_model and characterizes it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="n">delta</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of nodes: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of edges: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of connected components: </span><span class="si">{</span><span class="n">nx</span><span class="o">.</span><span class="n">number_connected_components</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average number of triangles: </span><span class="si">{</span><span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">triangles</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average square clustering: </span><span class="si">{</span><span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">square_clustering</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;test3 ends...&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_test4</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; This function tries several values of alpha, for the same delta</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="k">for</span> <span class="n">alpha</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]:</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">extended_duplication_divergence_graph</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="n">delta</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Alpha: </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of nodes: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_nodes</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of edges: </span><span class="si">{</span><span class="n">g</span><span class="o">.</span><span class="n">number_of_edges</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of connected components: </span><span class="si">{</span><span class="n">nx</span><span class="o">.</span><span class="n">number_connected_components</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average number of triangles: </span><span class="si">{</span><span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">triangles</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average square clustering: </span><span class="si">{</span><span class="n">mean</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">square_clustering</span><span class="p">(</span><span class="n">g</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-----------------------------------&quot;</span><span class="p">)</span>
+    <span class="n">timestamp</span><span class="p">(</span><span class="s2">&quot;test4 ends...&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">_test1</span><span class="p">()</span>
+    <span class="n">_test2</span><span class="p">()</span>
+    <span class="n">_test3</span><span class="p">()</span>
+    <span class="n">_test4</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Nicolas Lopez-Rozo*, Jorge Finke, Camilo Rocha.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+Synthetic Graph Generation
+==========================
+
+This module contains the implementation of the duplication-divergence model,
+both considering only duplication and divergence, and also considering the
+possibility of connecting the duplicated node to other nodes not connected to
+it.
+
+It is based on the following paper:
+
+Pastor-Satorras R, Smith E, Solé RV. *Evolving protein interaction networks
+through gene duplication*. J Theor Biol. 2003 May 21;222(2):199-210. doi:
+10.1016/s0022-5193(03)00028-6.
+
+
+.. toctree::
+   :maxdepth: 3
+
+   duplicationdivergence
+   synthgraph

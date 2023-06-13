@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>synthgraph module &mdash; Synthetic Graph Generator 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="duplicationdivergence module" href="duplicationdivergence.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Synthetic Graph Generator
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Synthetic Graph Generation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="duplicationdivergence.html">duplicationdivergence module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">synthgraph module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#graph-generation">Graph generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#calibration-methods">Calibration methods</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-an-existing-network">Using an existing network</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api-reference"><strong>API Reference</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#synthgraph.calibrate_alpha"><code class="docutils literal notranslate"><span class="pre">calibrate_alpha()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#synthgraph.calibrate_delta"><code class="docutils literal notranslate"><span class="pre">calibrate_delta()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#synthgraph.synth_graph_from_intersection"><code class="docutils literal notranslate"><span class="pre">synth_graph_from_intersection()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#synthgraph.synth_graph_from_network"><code class="docutils literal notranslate"><span class="pre">synth_graph_from_network()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Synthetic Graph Generator</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Synthetic Graph Generation</a></li>
+      <li class="breadcrumb-item active">synthgraph module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/synthgraph.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-synthgraph">
+<span id="synthgraph-module"></span><h1>synthgraph module<a class="headerlink" href="#module-synthgraph" title="Permalink to this heading"></a></h1>
+<blockquote>
+<div><p>This module contains the code for generating synthetic graphs using the
+duplication-divergence model. This process resembles the evolution of
+interactions between proteins in an organism. This evolution is
+thought to occur in three steps:</p>
+<blockquote>
+<div><p>1. Duplication: A protein duplicates itself. This is done by
+duplicating a vertex in the graph and copying all its edges.</p>
+<p>2. Divergence: The two proteins diverge from each other. This is
+done by randomly removing edges from the duplicated vertex with a
+probability delta.</p>
+<p>3. Evolution: The duplicated protein develops new interactions. This
+is done by adding new edges to the duplicated vertex with a
+probability alpha</p>
+</div></blockquote>
+</div></blockquote>
+<section id="graph-generation">
+<h2>Graph generation<a class="headerlink" href="#graph-generation" title="Permalink to this heading"></a></h2>
+<blockquote>
+<div><p>Two methods are provided for generating synthetic graphs in such a manner:</p>
+<blockquote>
+<div><p>1. duplication_divergence_graph: This method generates a single graph
+using the duplication-divergence model (steps 1 and 2)</p>
+<p>2. extended_duplication_divergence_graph: This method generates a single
+graph using the duplication-divergence model (steps 1, 2, and 3)</p>
+</div></blockquote>
+<p>The duplication-divergence model is parameterized by the following
+parameters:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>n: The number of vertices in the graph</p></li>
+<li><p>delta: The probability of an edge being removed during divergence</p></li>
+<li><p>alpha: The probability of an edge being added during evolution</p></li>
+<li><p>seed: The seed for the random number generator</p></li>
+</ul>
+</div></blockquote>
+<p>Additional optional parameters are provided for controlling verbosity:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>track_evolution: If set to True, a list of topological parameters         are stored and return at the end of the simulation. The returned         metrics are: current appended node, number of edges, average square         clustering, transitivity (triangle count) and degree histogram.</p></li>
+<li><p>verbose: If set to True, the method will display the progress of         the node aggregation process using the tqdm library.</p></li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+</section>
+<section id="calibration-methods">
+<h2>Calibration methods<a class="headerlink" href="#calibration-methods" title="Permalink to this heading"></a></h2>
+<blockquote>
+<div><p>Besides, this module implements methods for calibrating the alpha and
+delta parameters given a target number of edges. This method uses a
+modified binary search algorithm to find the correct value for the
+parameter. The algorithm works as follows:</p>
+<blockquote>
+<div><p>1. Given the expected number of edges, the method creates partitions
+of the search space [0, 1] for a parameter (alpha or delta).</p>
+<p>2. For each partition, the method generates several graphs using the
+duplication-divergence model with the given parameters.</p>
+<ol class="arabic simple" start="3">
+<li><p>The method computes the average number of edges for each partition.</p></li>
+</ol>
+<p>4. If the behaviour of the average number of edges is monotonic, the
+method narrows the search space to the partition including the target
+number of edges and repeats the procedure. Otherwise, the method stops
+and returns the average of the limits of the partition with the
+expected number of edges.</p>
+</div></blockquote>
+<p>Keep in mind that the calibration method finds an approximate value for
+the parameter, not the exact value. This is because the number of edges
+varies from one graph to another, even if the parameters are the same.
+For the extended duplication-divergence model, one of the parameters
+should be fixed, either alpha or delta.</p>
+<p>The calibration methods are parameterized by the following parameters,
+where applicable:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>n: The number of vertices in the graph.</p></li>
+<li><p>target_edges: The target number of edges.</p></li>
+<li><p>lo_alpha: The lower bound for the alpha parameter.</p></li>
+<li><p>hi_alpha: The upper bound for the alpha parameter.</p></li>
+<li><p>lo_delta: The lower bound for the delta parameter.</p></li>
+<li><p>hi_delta: The upper bound for the delta parameter.</p></li>
+<li><p>intervals: The number of partitions for the search space.</p></li>
+<li><p>repetitions: The number of graphs generated for each partition.</p></li>
+<li><p>seed: The seed for the random number generator.</p></li>
+<li><p>verbose: If set to True, the method will display the progress of         the node aggregation process using the tqdm library.</p></li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+</section>
+<section id="using-an-existing-network">
+<h2>Using an existing network<a class="headerlink" href="#using-an-existing-network" title="Permalink to this heading"></a></h2>
+<blockquote>
+<div><p>Support has been added for generating a graph using the
+duplication-divergence model from an existing graph or the
+intersection of two graphs. Those methods are:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>synth_graph_from_network: This method generates a graph using the         duplication-divergence model from an existing graph.</p></li>
+<li><p>synth_graph_from_intersection: This method generates a graph using         the duplication-divergence model from the intersection of two graphs.</p></li>
+</ol>
+</div></blockquote>
+<p>The methods are parameterized by the following parameters:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>g1: The graph to be used as a template.</p></li>
+<li><p>g2: The second graph to be used as a template (for the intersection method only).</p></li>
+<li><p>alpha: The probability of an edge being added during evolution.</p></li>
+<li><p>lo_delta: The lower bound for the delta parameter.</p></li>
+<li><p>hi_delta: The upper bound for the delta parameter.</p></li>
+<li><p>all other optional parameters like the calibration functions:         target_edges, lo_alpha, hi_alpha, intervals, repetitions, seed, verbose.</p></li>
+<li><p>seed: The seed for the random number generator.</p></li>
+<li><p>track_evolution: If set to True, a list of topological parameters         are stored and return at the end of the simulation. The returned         metrics are: current appended node, number of edges, average square         clustering, transitivity (triangle count) and degree histogram.</p></li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+</section>
+<section id="api-reference">
+<h2><strong>API Reference</strong><a class="headerlink" href="#api-reference" title="Permalink to this heading"></a></h2>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="synthgraph.calibrate_alpha">
+<span class="sig-prename descclassname"><span class="pre">synthgraph.</span></span><span class="sig-name descname"><span class="pre">calibrate_alpha</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_edges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lo_alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hi_alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.99</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intervals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repetitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/synthgraph.html#calibrate_alpha"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#synthgraph.calibrate_alpha" title="Permalink to this definition"></a></dt>
+<dd><p>This method calibrates the alpha parameter for the extended
+duplication-divergence model given a target number of edges. The method
+uses a modified binary search algorithm to find the correct value for
+the parameter. The algorithm calibrates the value of alpha using the
+following steps:</p>
+<blockquote>
+<div><p>1. Given the expected number of edges, the method creates partitions
+of the search space [lo_alpha, hi_alpha].</p>
+<p>2. For each partition, the method generates several graphs using the
+extended duplication-divergence model with the given parameters.</p>
+<ol class="arabic simple" start="3">
+<li><p>The method computes the average number of edges for each partition.</p></li>
+</ol>
+<p>4. If the behaviour of the average number of edges is monotonic, the
+method narrows the search space to the partition including the target
+number of edges and repeats the procedure. Otherwise, the method stops
+and returns the average of the limits of the partition with the
+expected number of edges.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – The number of vertices in the graph.</p></li>
+<li><p><strong>target_edges</strong> (<em>int</em>) – The target number of edges.</p></li>
+<li><p><strong>delta</strong> (<em>float</em>) – The delta parameter for the extended duplication-divergence     model.</p></li>
+<li><p><strong>lo_alpha</strong> (<em>float</em>) – The lower bound for the alpha parameter.</p></li>
+<li><p><strong>hi_alpha</strong> (<em>float</em>) – The upper bound for the alpha parameter.</p></li>
+<li><p><strong>intervals</strong> (<em>int</em>) – The number of partitions for the search space.</p></li>
+<li><p><strong>repetitions</strong> (<em>int</em>) – The number of graphs generated for each partition.</p></li>
+<li><p><strong>max_iterations</strong> (<em>int</em>) – The maximum number of iterations for the binary     search algorithm.</p></li>
+<li><p><strong>threads</strong> (<em>int</em>) – The number of threads to use for parallel execution. If     set to -1, the method will use all available threads.</p></li>
+<li><p><strong>verbose</strong> – If set to True, the method will display the progress of     the node aggregation process using the tqdm library.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return alpha<span class="colon">:</span></dt>
+<dd class="field-even"><p>The calibrated value for the alpha parameter.</p>
+</dd>
+<dt class="field-odd">Rtype alpha<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="synthgraph.calibrate_delta">
+<span class="sig-prename descclassname"><span class="pre">synthgraph.</span></span><span class="sig-name descname"><span class="pre">calibrate_delta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_edges</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lo_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hi_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.99</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intervals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repetitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/synthgraph.html#calibrate_delta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#synthgraph.calibrate_delta" title="Permalink to this definition"></a></dt>
+<dd><p>This method calibrates the delta parameter for the duplication-divergence
+model given a target number of edges. The method uses a modified binary
+search algorithm to find the correct value for the parameter. The
+algorithm calibrates the value of delta using the following steps:</p>
+<blockquote>
+<div><p>1. Given the expected number of edges, the method creates partitions
+of the search space [lo_delta, hi_delta].</p>
+<p>2. For each partition, the method generates several graphs using the
+duplication-divergence model with the given parameters.</p>
+<ol class="arabic simple" start="3">
+<li><p>The method computes the average number of edges for each partition.</p></li>
+</ol>
+<p>4. If the behaviour of the average number of edges is monotonic, the
+method narrows the search space to the partition including the target
+number of edges and repeats the procedure. Otherwise, the method stops
+and returns the average of the limits of the partition with the
+expected number of edges.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – The number of vertices in the graph.</p></li>
+<li><p><strong>target_edges</strong> (<em>int</em>) – The target number of edges.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – The alpha parameter for the duplication-divergence model. If     set to None, the method will use the extended duplication-divergence model.     Otherwise, the method will use the duplication-divergence model.</p></li>
+<li><p><strong>lo_delta</strong> (<em>float</em>) – The lower bound for the delta parameter.</p></li>
+<li><p><strong>hi_delta</strong> (<em>float</em>) – The upper bound for the delta parameter.</p></li>
+<li><p><strong>intervals</strong> (<em>int</em>) – The number of partitions for the search space.</p></li>
+<li><p><strong>repetitions</strong> (<em>int</em>) – The number of graphs generated for each partition.</p></li>
+<li><p><strong>max_iterations</strong> (<em>int</em>) – The maximum number of iterations for the binary     search algorithm.</p></li>
+<li><p><strong>threads</strong> (<em>int</em>) – The number of threads to use for parallel execution. If     set to -1, the method will use all available threads.</p></li>
+<li><p><strong>verbose</strong> – If set to True, the method will display the progress of     the node aggregation process using the tqdm library.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return delta<span class="colon">:</span></dt>
+<dd class="field-even"><p>The calibrated value for the delta parameter.</p>
+</dd>
+<dt class="field-odd">Rtype delta<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="synthgraph.synth_graph_from_intersection">
+<span class="sig-prename descclassname"><span class="pre">synthgraph.</span></span><span class="sig-name descname"><span class="pre">synth_graph_from_intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">g1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lo_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hi_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.99</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intervals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repetitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_evolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/synthgraph.html#synth_graph_from_intersection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#synthgraph.synth_graph_from_intersection" title="Permalink to this definition"></a></dt>
+<dd><p>This function generates a synthetic graph from the intersection of two
+given networks using the extended duplication-divergence model. The
+parameters of the model are calibrated by considering the number of
+vertices as n and searching for the value of delta that generates a
+graph with the same number of edges as the given network. The alpha
+parameter should be given as input to the function.</p>
+<p>The number of nodes to use is the intersection between the two networks,
+g1 and g2. The number of edges to use is the maximum between the number
+of edges from g1 having both nodes in the node intersection and the number
+of edges from g2 having both nodes in the node intersection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>g1</strong> (<em>networkx.Graph</em>) – The first network used as base to extract information to     generate the synthetic graph.</p></li>
+<li><p><strong>g2</strong> (<em>networkx.Graph</em>) – The second network used as base to extract information to     generate the synthetic graph.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – The alpha parameter for the extended duplication-divergence.     if set to None, the duplication-divergence model is used.</p></li>
+<li><p><strong>lo_delta</strong> (<em>float</em>) – The lower bound for the delta parameter.</p></li>
+<li><p><strong>hi_delta</strong> (<em>float</em>) – The upper bound for the delta parameter.</p></li>
+<li><p><strong>intervals</strong> (<em>int</em>) – The number of partitions for the search space.</p></li>
+<li><p><strong>repetitions</strong> (<em>int</em>) – The number of graphs generated for each partition.</p></li>
+<li><p><strong>max_iterations</strong> (<em>int</em>) – The maximum number of iterations for the binary     search algorithm.</p></li>
+<li><p><strong>threads</strong> (<em>int</em>) – The number of threads to use for parallel execution. If     set to -1, the method will use all available threads.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – If set to True, the method will display the progress of     the node aggregation process using the tqdm library.</p></li>
+<li><p><strong>seed</strong> (<em>int</em>) – The seed for the random number generator.</p></li>
+<li><p><strong>track_evolution</strong> (<em>bool</em>) – If set to True, the method will return the     evolution of the number of edges for each partition.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return g_synth<span class="colon">:</span></dt>
+<dd class="field-even"><p>The synthetic graph generated using the extended     duplication-divergence model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="synthgraph.synth_graph_from_network">
+<span class="sig-prename descclassname"><span class="pre">synthgraph.</span></span><span class="sig-name descname"><span class="pre">synth_graph_from_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">g</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lo_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hi_delta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.99</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intervals</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repetitions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_evolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/synthgraph.html#synth_graph_from_network"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#synthgraph.synth_graph_from_network" title="Permalink to this definition"></a></dt>
+<dd><p>This function generates a synthetic graph from a given network using the
+extended duplication-divergence model. The parameters of the model are
+calibrated by considering the number of vertices as n and searching for
+the value of delta that generates a graph with the same number of edges
+as the given network. The alpha parameter should be given as input to
+the function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>g</strong> (<em>networkx.Graph</em>) – The network used as base to extract information to generate     the synthetic graph.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – The alpha parameter for the extended duplication-divergence.     if set to None, the duplication-divergence model is used.</p></li>
+<li><p><strong>lo_delta</strong> (<em>float</em>) – The lower bound for the delta parameter.</p></li>
+<li><p><strong>hi_delta</strong> (<em>float</em>) – The upper bound for the delta parameter.</p></li>
+<li><p><strong>intervals</strong> (<em>int</em>) – The number of partitions for the search space.</p></li>
+<li><p><strong>repetitions</strong> (<em>int</em>) – The number of graphs generated for each partition.</p></li>
+<li><p><strong>max_iterations</strong> (<em>int</em>) – The maximum number of iterations for the binary     search algorithm.</p></li>
+<li><p><strong>threads</strong> (<em>int</em>) – The number of threads to use for parallel execution. If     set to -1, the method will use all available threads.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – If set to True, the method will display the progress of     the node aggregation process using the tqdm library.</p></li>
+<li><p><strong>seed</strong> (<em>int</em>) – The seed for the random number generator.</p></li>
+<li><p><strong>track_evolution</strong> (<em>bool</em>) – If set to True, the method will return the     evolution of the number of edges for each partition.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return g_synth<span class="colon">:</span></dt>
+<dd class="field-even"><p>The synthetic graph generated using the extended     duplication-divergence model.</p>
+</dd>
+<dt class="field-odd">Rtype g_synth<span class="colon">:</span></dt>
+<dd class="field-odd"><p>networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="duplicationdivergence.html" class="btn btn-neutral float-left" title="duplicationdivergence module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Nicolas Lopez-Rozo*, Jorge Finke, Camilo Rocha.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

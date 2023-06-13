@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>duplicationdivergence module &mdash; Synthetic Graph Generator 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="synthgraph module" href="synthgraph.html" />
+    <link rel="prev" title="Synthetic Graph Generation" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Synthetic Graph Generator
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Synthetic Graph Generation</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">duplicationdivergence module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#algorithmic-description">Algorithmic description</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api-reference"><strong>API Reference</strong></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#duplicationdivergence.characterize_complement"><code class="docutils literal notranslate"><span class="pre">characterize_complement()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#duplicationdivergence.characterize_graph"><code class="docutils literal notranslate"><span class="pre">characterize_graph()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#duplicationdivergence.duplication_divergence_graph"><code class="docutils literal notranslate"><span class="pre">duplication_divergence_graph()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#duplicationdivergence.extended_duplication_divergence_graph"><code class="docutils literal notranslate"><span class="pre">extended_duplication_divergence_graph()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#duplicationdivergence.timestamp"><code class="docutils literal notranslate"><span class="pre">timestamp()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="synthgraph.html">synthgraph module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Synthetic Graph Generator</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Synthetic Graph Generation</a></li>
+      <li class="breadcrumb-item active">duplicationdivergence module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/duplicationdivergence.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-duplicationdivergence">
+<span id="duplicationdivergence-module"></span><h1>duplicationdivergence module<a class="headerlink" href="#module-duplicationdivergence" title="Permalink to this heading"></a></h1>
+<p>This module contains the implementation of the duplication-divergence model,
+both considering only duplication and divergence, and also considering the
+possibility of connecting the duplicated node to other nodes not connected to
+it.</p>
+<section id="algorithmic-description">
+<h2>Algorithmic description<a class="headerlink" href="#algorithmic-description" title="Permalink to this heading"></a></h2>
+<p>It is based on the following paper:</p>
+<p>Pastor-Satorras R, Smith E, Solé RV. <em>Evolving protein interaction networks
+through gene duplication</em>. J Theor Biol. 2003 May 21;222(2):199-210. doi:
+10.1016/s0022-5193(03)00028-6.</p>
+<p>The model starts from a complete graph with two nodes and then repeats this process:</p>
+<ol class="arabic simple">
+<li><p>A node is chosen at random and duplicated, creating a new node.</p></li>
+<li><p>With probability delta, each of the edges of the duplicated node may be removed.</p></li>
+<li><p>With probability alpha, the duplicated node may become connected to any of the nodes not connected to it before the duplication.</p></li>
+</ol>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+</section>
+<section id="api-reference">
+<h2><strong>API Reference</strong><a class="headerlink" href="#api-reference" title="Permalink to this heading"></a></h2>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="duplicationdivergence.characterize_complement">
+<span class="sig-prename descclassname"><span class="pre">duplicationdivergence.</span></span><span class="sig-name descname"><span class="pre">characterize_complement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/duplicationdivergence.html#characterize_complement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#duplicationdivergence.characterize_complement" title="Permalink to this definition"></a></dt>
+<dd><p>Characterize the complement of a duplication-divergence graph by computing
+the number of edges, the average square clustering coefficient, the
+transitivity and the degree distribution. For the latter, the degree
+distribution is returned as a list of integers where the i-th element is
+the number of nodes with degree i. If alpha is different from 0 or not
+given, the extended duplication-divergence graph is used instead.</p>
+<p>The complement of a graph is the graph with the same nodes and all the
+edges that are not in the original graph. This excludes self-loops and
+multiple edges.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – The number of nodes in the graph</p></li>
+<li><p><strong>delta</strong> (<em>float</em>) – The probability of removing an edge after the duplication
+process</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – The probability of adding an edge between the duplicated
+node and a random node not connected to the original node</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return (edg, squ, tri, deg)<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing the number of edges, the
+average square clustering coefficient, the transitivity and the degree
+distribution of the graph.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="duplicationdivergence.characterize_graph">
+<span class="sig-prename descclassname"><span class="pre">duplicationdivergence.</span></span><span class="sig-name descname"><span class="pre">characterize_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">g</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/duplicationdivergence.html#characterize_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#duplicationdivergence.characterize_graph" title="Permalink to this definition"></a></dt>
+<dd><p>Characterize a graph by computing the number of edges, the average square
+clustering coefficient, the transitivity and the degree distribution. For
+the latter, the degree distribution is returned as a list of integers
+where the i-th element is the number of nodes with degree i.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>g</strong> (<em>networkx.Graph</em>) – The graph to characterize</p>
+</dd>
+<dt class="field-even">Return (edg, squ, tri, deg)<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tuple containing the number of edges, the
+average square clustering coefficient, the transitivity and the degree
+distribution of the graph.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="duplicationdivergence.duplication_divergence_graph">
+<span class="sig-prename descclassname"><span class="pre">duplicationdivergence.</span></span><span class="sig-name descname"><span class="pre">duplication_divergence_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_evolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/duplicationdivergence.html#duplication_divergence_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#duplicationdivergence.duplication_divergence_graph" title="Permalink to this definition"></a></dt>
+<dd><p>Duplication-Divergence model where there is a possibility to connect a
+duplicated node to other edges not connected to it</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of nodes of the final network</p></li>
+<li><p><strong>delta</strong> (<em>float</em>) – Probability of removing an edge from the duplicated node</p></li>
+<li><p><strong>seed</strong> (<em>float</em>) – (optional) Seed for the random number generator. Default: None</p></li>
+<li><p><strong>track_evolution</strong> (<em>bool</em>) – (Optional) Whether topological parameters are stored
+and return at the end of the simulation. The returned metrics are:
+current appended node, number of edges, average square clustering,
+transitivity (triangle count) and degree histogram.
+BEWARE: This highly increases the computational complexity of the model.
+Use at your own discretion.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – (optional) Whether the progress should be displayed on the
+screen using tqdm. Default value: False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return g<span class="colon">:</span></dt>
+<dd class="field-even"><p>The resulting graph, 0-indexed. If track_evolution is set to True,
+then the return value is a tuple (graph, list(metrics))</p>
+</dd>
+<dt class="field-odd">Rtype g<span class="colon">:</span></dt>
+<dd class="field-odd"><p>networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="duplicationdivergence.extended_duplication_divergence_graph">
+<span class="sig-prename descclassname"><span class="pre">duplicationdivergence.</span></span><span class="sig-name descname"><span class="pre">extended_duplication_divergence_graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">track_evolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/duplicationdivergence.html#extended_duplication_divergence_graph"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#duplicationdivergence.extended_duplication_divergence_graph" title="Permalink to this definition"></a></dt>
+<dd><p>Duplication-Divergence model where there is a possibility to connect a
+duplicated node to other edges not connected to it</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> (<em>int</em>) – Number of nodes of the final network</p></li>
+<li><p><strong>delta</strong> (<em>float</em>) – Probability of removing an edge from the duplicated node</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Probability of connecting the duplicated node with any of the
+other nodes not connected to it, when the duplication occurred</p></li>
+<li><p><strong>seed</strong> (<em>float</em>) – (optional) Seed for the random number generator. Default: None</p></li>
+<li><p><strong>track_evolution</strong> (<em>bool</em>) – (Optional) Whether topological parameters are stored
+and return at the end of the simulation. The returned metrics are:
+current appended node, number of edges, average square clustering,
+transitivity (triangle count) and degree histogram.
+BEWARE: This highly increases the computational complexity of the model.
+Use at your own discretion.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – (optional) Whether the progress should be displayed on the
+screen using tqdm. Default value: False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return g<span class="colon">:</span></dt>
+<dd class="field-even"><p>The resulting graph, 0-indexed. If track_evolution is set to True,
+then the return value is a tuple (graph, list(metrics))</p>
+</dd>
+<dt class="field-odd">Rtype g<span class="colon">:</span></dt>
+<dd class="field-odd"><p>networkx.Graph</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="duplicationdivergence.timestamp">
+<span class="sig-prename descclassname"><span class="pre">duplicationdivergence.</span></span><span class="sig-name descname"><span class="pre">timestamp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/duplicationdivergence.html#timestamp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#duplicationdivergence.timestamp" title="Permalink to this definition"></a></dt>
+<dd><p>This function prints a timestamp with a message and a prefix (both optional)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> (<em>str</em>) – Message to be shown after timestamp</p></li>
+<li><p><strong>prefix</strong> (<em>str</em>) – Message to be shown before timestamp</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="Synthetic Graph Generation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="synthgraph.html" class="btn btn-neutral float-right" title="synthgraph module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Nicolas Lopez-Rozo*, Jorge Finke, Camilo Rocha.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+synthgraph module
+=================
+
+.. automodule:: synthgraph
+   :members:
+   :undoc-members:
+   :show-inheritance:
