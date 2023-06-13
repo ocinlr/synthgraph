@@ -141,5 +141,6 @@ to execute your code, for easy access.
 
 ## API Reference
 
-The reference can be found online [here](docs/index.html) or as 
+The reference can be found online 
+[here](https://ocinlr.github.io/synthgraph/) or as 
 a pdf [here](docs/syntheticgraphgenerator.pdf).
